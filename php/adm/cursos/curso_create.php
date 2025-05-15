@@ -33,7 +33,7 @@ if (!$nome || !$periodo) {
 
 // Insere no banco
 $stmt = $conn->prepare("
-  INSERT INTO curso_tecnico (nome, periodo)
+  INSERT INTO curso (nome, periodo)
   VALUES (?, ?)
 ");
 $stmt->bind_param("ss", $nome, $periodo);

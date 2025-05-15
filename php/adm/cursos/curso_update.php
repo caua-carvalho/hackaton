@@ -25,7 +25,7 @@ if ($id <= 0 || !$nome || !$periodo) {
 }
 
 $stmt = $conn->prepare("
-  UPDATE curso_tecnico
+  UPDATE curso
      SET nome = ?, periodo = ?
    WHERE id = ?
 ");

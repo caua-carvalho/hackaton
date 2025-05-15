@@ -17,8 +17,8 @@ const BACKGROUND_COLOR = '#ffffff';
 
 const LoginScreen = () => {
   const navigation = useNavigation();
-  const [username, setUsername] = useState('adm@gmail.com');
-  const [password, setPassword] = useState('123');
+  const [username, setUsername] = useState('admin@etec.com');
+  const [password, setPassword] = useState('admin123');
   const [loading, setLoading] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');

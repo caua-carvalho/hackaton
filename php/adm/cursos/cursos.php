@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 require_once __DIR__ . '/../../db_config.php';
 
-$sql = "SELECT id, nome, periodo FROM curso_tecnico ORDER BY nome";
+$sql = "SELECT id, nome, periodo FROM curso ORDER BY nome";
 $result = $conn->query($sql);
 $cursos = [];
 if ($result) {
