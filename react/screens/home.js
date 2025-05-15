@@ -20,8 +20,8 @@ const AdminHomeScreen = ({ route }) => {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.toggleDrawer()}>
           <Ionicons name="menu" size={28} color="#fff" />
-        </TouchableOpacity>les.logo}
-        />
+        </TouchableOpacity>
+        <View style={{ width: 28 }} /> {/* Espaço para alinhar o logo centralizado */}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
