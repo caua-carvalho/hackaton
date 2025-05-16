@@ -8,9 +8,19 @@ import {
   Modal,
   StyleSheet,
   ActivityIndicator,
-  Alert,
+  Image
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { MaterialIcons } from '@expo/vector-icons';
+
+// Cores do tema ETEC
+const PRIMARY_COLOR = '#b20000';       // Vermelho principal
+const ACCENT_DARK = '#2e7d32';          // Verde escuro de acento
+const ACCENT_LIGHT = '#81c784';         // Verde claro de acento
+const BACKGROUND_COLOR = '#FAFAFA';     // Fundo geral
+const SURFACE_COLOR = '#FFFFFF';        // Cards e modais
+const TEXT_PRIMARY = '#283337';         // Texto principal
+const TEXT_SECONDARY = '#666';          // Texto secundário
 
 const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm/cursos';
 const PERIODS = [
@@ -19,7 +29,7 @@ const PERIODS = [
   { label: 'Modular (Noite)', value: 'Modular-Noite' }
 ];
 
-const CoursesScreen = () => {
+const CoursesScreen = ({ navigation }) => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -28,6 +38,19 @@ const CoursesScreen = () => {
   const [period, setPeriod] = useState(PERIODS[0].value);
 
   useEffect(() => {
+    navigation.setOptions({
+      headerTitle: 'Cursos',
+      headerStyle: { backgroundColor: PRIMARY_COLOR, height: 56 },
+      headerTintColor: '#FFFFFF',
+      headerTitleStyle: { fontWeight: 'bold', fontSize: 18 },
+      headerLeft: () => (
+        <Image
+          source={require('../assets/etec_logo.png')}
+          style={styles.logo}
+        />
+      ),
+      headerLeftContainerStyle: { paddingLeft: 16 }
+    });
     fetchCourses();
   }, []);
 
@@ -87,13 +110,13 @@ const CoursesScreen = () => {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.item}>
-      <View>
+    <View style={styles.card}>
+      <View style={{ flex: 1 }}>
         <Text style={styles.itemTitle}>{item.nome}</Text>
         <Text style={styles.itemSubtitle}>{item.periodo}</Text>
       </View>
-      <TouchableOpacity onPress={() => openModal(item)} style={styles.editButton}>
-        <Text style={styles.editText}>Editar</Text>
+      <TouchableOpacity onPress={() => openModal(item)} style={styles.iconButton}>
+        <MaterialIcons name="edit" size={24} color={ACCENT_DARK} />
       </TouchableOpacity>
     </View>
   );
@@ -101,7 +124,7 @@ const CoursesScreen = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#b20000" />
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
       </View>
     );
   }
@@ -113,10 +136,10 @@ const CoursesScreen = () => {
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text>Nenhum curso cadastrado.</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>Nenhum curso cadastrado.</Text>}
       />
-      <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>  
-        <Text style={styles.addButtonText}>+ Novo Curso</Text>
+      <TouchableOpacity style={styles.fab} onPress={() => openModal()}>
+        <MaterialIcons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -127,25 +150,28 @@ const CoursesScreen = () => {
             </Text>
             <TextInput
               placeholder="Nome do Curso"
+              placeholderTextColor="#999"
               value={name}
               onChangeText={setName}
-              style={styles.input}
+              style={styles.input}  // Contorno em verde padronizado
             />
-            <Picker
-              selectedValue={period}
-              onValueChange={setPeriod}
-              style={styles.picker}
-            >
-              {PERIODS.map((p) => (
-                <Picker.Item key={p.value} label={p.label} value={p.value} />
-              ))}
-            </Picker>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={period}
+                onValueChange={setPeriod}
+                style={styles.picker}
+              >
+                {PERIODS.map((p) => (
+                  <Picker.Item key={p.value} label={p.label} value={p.value} />
+                ))}
+              </Picker>
+            </View>
             <View style={styles.modalActions}>
+              <TouchableOpacity onPress={saveCourse} style={styles.cancelButton}>
+                <Text style={styles.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={saveCourse} style={styles.saveButton}>
                 <Text style={styles.saveText}>Salvar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -156,43 +182,126 @@ const CoursesScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-  list: { paddingBottom: 80 },
-  item: {
+  container: {
+    flex: 1,
+    backgroundColor: BACKGROUND_COLOR
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  list: {
+    padding: 16,
+    paddingBottom: 100
+  },
+  card: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 10,
-    elevation: 1
+    alignItems: 'center',
+    backgroundColor: SURFACE_COLOR,
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: ACCENT_LIGHT
   },
-  itemTitle: { fontSize: 16, fontWeight: '500' },
-  itemSubtitle: { fontSize: 12, color: '#666' },
-  editButton: { justifyContent: 'center' },
-  editText: { color: '#b20000', fontWeight: '500' },
-  addButton: {
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: TEXT_PRIMARY,
+    marginBottom: 4
+  },
+  itemSubtitle: {
+    fontSize: 14,
+    color: TEXT_SECONDARY
+  },
+  iconButton: {
+    padding: 8
+  },
+  fab: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#b20000',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    elevation: 3
+    bottom: 24,
+    right: 24,
+    backgroundColor: PRIMARY_COLOR,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4
   },
-  addButtonText: { color: '#fff', fontWeight: 'bold' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 8, padding: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 4, padding: 10, marginBottom: 12 },
-  picker: { marginBottom: 12 },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end' },
-  saveButton: { marginRight: 12 },
-  saveText: { color: '#b20000', fontWeight: '500' },
+  emptyText: {
+    textAlign: 'center',
+    color: TEXT_SECONDARY,
+    marginTop: 32
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: SURFACE_COLOR,
+    borderRadius: 8,
+    padding: 24
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: TEXT_PRIMARY,
+    marginBottom: 16
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: ACCENT_DARK,  // contorno verde escuro padronizado
+    borderRadius: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: TEXT_PRIMARY,
+    marginBottom: 16,
+    backgroundColor: SURFACE_COLOR
+  },
+  pickerWrapper: {
+    borderWidth: 1,
+    borderColor: ACCENT_DARK,  // contorno verde escuro padronizado
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 24
+  },
+  picker: {
+    height: 50,
+    width: '100%'
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end'
+  },
+  saveButton: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 4,
+    marginLeft: 12
+  },
+  saveText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14
+  },
   cancelButton: {},
-  cancelText: { color: '#666' }
+  cancelText: {
+    color: ACCENT_DARK,
+    fontSize: 14
+  },
+  logo: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain'
+  }
 });
 
 export default CoursesScreen;
