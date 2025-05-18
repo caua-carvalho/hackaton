@@ -11,10 +11,11 @@ import {
   Alert,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { MaterialIcons } from '@expo/vector-icons';
 
-const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm/disciplina';
+const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm';
 
-const DisciplinasScreen = () => {
+export default function DisciplinasScreen() {
   const [disciplinas, setDisciplinas] = useState([]);
   const [courses, setCourses] = useState([]);
   const [professores, setProfessores] = useState([]);
@@ -22,8 +23,8 @@ const DisciplinasScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editing, setEditing] = useState(null);
   const [nome, setNome] = useState('');
-  const [cursoId, setCursoId] = useState('');
-  const [professorId, setProfessorId] = useState('');
+  const [cursoCd, setCursoCd] = useState('');
+  const [professorCd, setProfessorCd] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -33,9 +34,9 @@ const DisciplinasScreen = () => {
     setLoading(true);
     try {
       const [discRes, cursoRes, profRes] = await Promise.all([
-        fetch(`${API_URL}/disciplinas.php`),
-        fetch(`${API_URL}/cursos.php`),
-        fetch(`${API_URL}/professores.php`),
+        fetch(`${API_URL}/disciplinas/disciplinas.php`),
+        fetch(`${API_URL}/cursos/cursos.php`),
+        fetch(`${API_URL}/professores/professores.php`),
       ]);
       const discJson = await discRes.json();
       const cursoJson = await cursoRes.json();
@@ -45,6 +46,7 @@ const DisciplinasScreen = () => {
       setCourses(cursoJson.cursos || []);
       setProfessores(profJson.professores || []);
     } catch (e) {
+      console.error('[fetchData] error:', e);
       Alert.alert('Erro', 'Não foi possível carregar dados');
     } finally {
       setLoading(false);
@@ -55,37 +57,36 @@ const DisciplinasScreen = () => {
     if (item) {
       setEditing(item);
       setNome(item.nome);
-      setCursoId(item.curso_id.toString());
-      setProfessorId(item.professor_id.toString());
+      setCursoCd(item.curso_cd.toString());
+      setProfessorCd(item.professor_cd.toString());
     } else {
       setEditing(null);
       setNome('');
-      setCursoId(courses[0]?.id.toString() || '');
-      setProfessorId(professores[0]?.id.toString() || '');
+      setCursoCd(courses[0]?.id.toString() || '');
+      setProfessorCd(professores[0]?.id.toString() || '');
     }
     setModalVisible(true);
   };
 
-  const save = async () => {
+  const saveDisciplina = async () => {
     if (!nome.trim()) {
       Alert.alert('Validação', 'Informe o nome da disciplina');
       return;
     }
-    if (!cursoId) {
+    if (!cursoCd) {
       Alert.alert('Validação', 'Selecione um curso');
       return;
     }
-    if (!professorId) {
+    if (!professorCd) {
       Alert.alert('Validação', 'Selecione um professor');
       return;
     }
 
-    const payload = { nome, curso_id: cursoId, professor_id: professorId };
-    let url = `${API_URL}/disciplina_create.php`;
-
+    const payload = { nome, curso_cd: cursoCd, professor_cd: professorCd };
+    let url = `${API_URL}/disciplinas/disciplinas_create.php`;
     if (editing) {
       payload.id = editing.id;
-      url = `${API_URL}/disciplina_update.php`;
+      url = `${API_URL}/disciplinas/disciplinas_update.php`;
     }
 
     try {
@@ -102,26 +103,23 @@ const DisciplinasScreen = () => {
         Alert.alert('Erro', data.message || 'Falha ao salvar disciplina');
       }
     } catch (e) {
+      console.error('[saveDisciplina] error:', e);
       Alert.alert('Erro', 'Falha na comunicação');
     }
   };
 
-  const renderItem = ({ item }) => {
-    const curso = courses.find(c => c.id === item.curso_id);
-    const prof = professores.find(p => p.id === item.professor_id);
-    return (
-      <View style={styles.item}>
-        <View>
-          <Text style={styles.itemTitle}>{item.nome}</Text>
-          <Text style={styles.itemSubtitle}>Curso: {curso?.nome}</Text>
-          <Text style={styles.itemSubtitle}>Prof.: {prof?.nome}</Text>
-        </View>
-        <TouchableOpacity onPress={() => openModal(item)} style={styles.editButton}>
-          <Text style={styles.editText}>Editar</Text>
-        </TouchableOpacity>
+  const renderItem = ({ item }) => (
+    <View style={styles.item}>
+      <View style={styles.textContainer}>
+        <Text style={styles.title}>{item.nome}</Text>
+        <Text style={styles.subtitle}>Turma: {item.turma_nome}</Text>
+        <Text style={styles.subtitle}>Professor: {item.professor_nome}</Text>
       </View>
-    );
-  };
+      <TouchableOpacity onPress={() => openModal(item)} style={styles.iconButton}>
+        <MaterialIcons name="edit" size={24} color="#b20000" />
+      </TouchableOpacity>
+    </View>
+  );
 
   if (loading) {
     return (
@@ -138,10 +136,10 @@ const DisciplinasScreen = () => {
         keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text>Nenhuma disciplina cadastrada.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>Nenhuma disciplina cadastrada.</Text>}
       />
       <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>
-        <Text style={styles.addButtonText}>+ Nova Disciplina</Text>
+        <MaterialIcons name="add" size={28} color="#fff" />
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -152,30 +150,35 @@ const DisciplinasScreen = () => {
             </Text>
             <TextInput
               placeholder="Nome da Disciplina"
+              placeholderTextColor="#999"
               value={nome}
               onChangeText={setNome}
               style={styles.input}
             />
-            <Picker
-              selectedValue={cursoId}
-              onValueChange={setCursoId}
-              style={styles.picker}
-            >
-              {courses.map(c => (
-                <Picker.Item key={c.id} label={c.nome} value={c.id.toString()} />
-              ))}
-            </Picker>
-            <Picker
-              selectedValue={professorId}
-              onValueChange={setProfessorId}
-              style={styles.picker}
-            >
-              {professores.map(p => (
-                <Picker.Item key={p.id} label={p.nome} value={p.id.toString()} />
-              ))}
-            </Picker>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={cursoCd}
+                onValueChange={setCursoCd}
+                style={styles.picker}
+              >
+                {courses.map(c => (
+                  <Picker.Item key={c.id} label={c.nome} value={c.id.toString()} />
+                ))}
+              </Picker>
+            </View>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={professorCd}
+                onValueChange={setProfessorCd}
+                style={styles.picker}
+              >
+                {professores.map(p => (
+                  <Picker.Item key={p.id} label={p.nome} value={p.id.toString()} />
+                ))}
+              </Picker>
+            </View>
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={save} style={styles.saveButton}>
+              <TouchableOpacity onPress={saveDisciplina} style={styles.saveButton}>
                 <Text style={styles.saveText}>Salvar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
@@ -187,46 +190,47 @@ const DisciplinasScreen = () => {
       </Modal>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-  list: { paddingBottom: 80 },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  list: { padding: 16, paddingBottom: 100 },
   item: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 6,
-    marginBottom: 10,
-    elevation: 1
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
   },
-  itemTitle: { fontSize: 16, fontWeight: '500' },
-  itemSubtitle: { fontSize: 12, color: '#666' },
-  editButton: { justifyContent: 'center' },
-  editText: { color: '#b20000', fontWeight: '500' },
+  textContainer: { flex: 1, marginRight: 12 },
+  title: { fontSize: 16, fontWeight: 'bold', color: '#283337', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#666', marginBottom: 2 },
+  iconButton: { padding: 8 },
   addButton: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
+    bottom: 24,
+    right: 24,
     backgroundColor: '#b20000',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    elevation: 3
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
   },
-  addButtonText: { color: '#fff', fontWeight: 'bold' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  empty: { textAlign: 'center', marginTop: 32, color: '#666' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 8, padding: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 4, padding: 10, marginBottom: 12 },
-  picker: { marginBottom: 12 },
+  modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 8, padding: 24 },
+  modalTitle: { fontSize: 18, fontWeight: '600', color: '#283337', marginBottom: 16 },
+  input: { width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, padding: 12, marginBottom: 16, fontSize: 16, color: '#283337' },
+  pickerWrapper: { width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginBottom: 16, overflow: 'hidden' },
+  picker: { width: '100%' },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end' },
-  saveButton: { marginRight: 12 },
-  saveText: { color: '#b20000', fontWeight: '500' },
+  saveButton: { backgroundColor: '#b20000', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 4, marginRight: 12 },
+  saveText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
   cancelButton: {},
-  cancelText: { color: '#666' }
+  cancelText: { color: '#b20000', fontSize: 14 }
 });
-
-export default DisciplinasScreen;

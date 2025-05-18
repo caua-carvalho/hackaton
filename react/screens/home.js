@@ -65,6 +65,13 @@ const AdminHomeScreen = ({ route }) => {
 
           <TouchableOpacity
             style={styles.actionButton}
+            onPress={() => navigation.navigate('Turmas')}
+          >
+            <Text style={styles.actionText}>Turmas</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={() => navigation.navigate('Horarios')}
           >
             <Text style={styles.actionText}>Horários</Text>

@@ -12,103 +12,104 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 
-const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm/cursos';
-const PERIODS = [
-  { label: 'Integral (Manhã)', value: 'Mtec dia' },
-  { label: 'Integral (Noite)', value: 'Integral-Noite' },
-  { label: 'Modular (Noite)', value: 'Modular-Noite' }
-];
+const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm/';
 
-const CoursesScreen = () => {
-  const [courses, setCourses] = useState([]);
+const TurmasScreen = () => {
+  const [turmas, setTurmas] = useState([]);
+  const [cursos, setCursos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingCourse, setEditingCourse] = useState(null);
-  const [name, setName] = useState('');
-  const [abreviacao, setAbreviacao] = useState('');
-  const [period, setPeriod] = useState(PERIODS[0].value);
+  const [editing, setEditing] = useState(null);
+  const [nome, setNome] = useState('');
+  const [divisao, setDivisao] = useState('');
+  const [cursoCd, setCursoCd] = useState('');
 
   useEffect(() => {
-    fetchCourses();
+    fetchData();
   }, []);
 
-  const fetchCourses = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/cursos.php`);
-      const json = await res.json();
-      console.log('Cursos carregados:', json.cursos);
-      setCourses(json.cursos || []);
+      const [turmaRes, cursoRes] = await Promise.all([
+        fetch(`${API_URL}/turmas/turmas.php`),
+        fetch(`${API_URL}/cursos/cursos.php`),
+      ]);
+      const turmaJson = await turmaRes.json();
+      const cursoJson = await cursoRes.json();
+
+      setTurmas(turmaJson.turmas || []);
+      setCursos(cursoJson.cursos || []);
     } catch (e) {
-      console.error('Erro ao carregar cursos:', e);
-      Alert.alert('Erro', 'Não foi possível carregar cursos');
+      console.error('[fetchData] error:', e);
+      Alert.alert('Erro', 'Não foi possível carregar dados');
     } finally {
       setLoading(false);
     }
   };
 
-  const openModal = (course = null) => {
-    if (course) {
-      setEditingCourse(course);
-      setName(course.nome);
-      setAbreviacao(course.abreviacao);
-      setPeriod(course.periodo);
+  const openModal = (item = null) => {
+    if (item) {
+      setEditing(item);
+      setNome(item.nome);
+      setDivisao(item.divisao);
+      setCursoCd(item.curso_cd.toString());
     } else {
-      setEditingCourse(null);
-      setName('');
-      setAbreviacao('');
-      setPeriod(PERIODS[0].value);
+      setEditing(null);
+      setNome('');
+      setDivisao('');
+      setCursoCd(cursos[0]?.id.toString() || '');
     }
     setModalVisible(true);
   };
 
-  const saveCourse = async () => {
-    if (!name.trim()) {
-      Alert.alert('Validação', 'Informe o nome do curso');
+  const save = async () => {
+    if (!nome.trim() || !divisao.trim() || !cursoCd) {
+      Alert.alert('Validação', 'Preencha todos os campos');
       return;
     }
-    if (!abreviacao.trim()) {
-      Alert.alert('Validação', 'Informe a abreviação');
-      return;
-    }
-    try {
-      const payload = { nome: name, abreviacao: abreviacao, periodo: period };
-      const url = editingCourse
-        ? `${API_URL}/curso_update.php`
-        : `${API_URL}/curso_create.php`;
-      if (editingCourse) payload.id = editingCourse.id;
 
+    const payload = { nome, divisao, curso_cd: cursoCd };
+    let url = `${API_URL}/turmas/turmas_create.php`;
+    if (editing) {
+      payload.id = editing.id;
+      url = `${API_URL}/turmas/turmas_update.php`;
+    }
+
+    try {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      console.log('Resposta saveCourse:', data);
       if (res.ok && data.success) {
-        fetchCourses();
+        fetchData();
         setModalVisible(false);
       } else {
-        Alert.alert('Erro', data.message || 'Falha ao salvar');
+        Alert.alert('Erro', data.message || 'Falha ao salvar turma');
       }
     } catch (e) {
-      console.error('Erro de comunicação:', e);
+      console.error('[save] error:', e);
       Alert.alert('Erro', 'Falha na comunicação');
     }
   };
 
-  const renderItem = ({ item }) => (
-    <View style={styles.item}>
-      <View style={styles.textContainer}>
-        <Text style={styles.itemTitle}>{item.nome}</Text>
-        <Text style={styles.itemSubtitle}>{item.abreviacao}</Text>
-        <Text style={styles.itemSubtitle}>{item.periodo}</Text>
+  const renderItem = ({ item }) => {
+    const curso = cursos.find(c => c.id === item.curso_cd);
+    return (
+      <View style={styles.item}>
+        <View style={styles.textContainer}>
+          <Text style={styles.itemTitle}>{item.nome}</Text>
+          <Text style={styles.itemSubtitle}>Divisão: {item.divisao}</Text>
+          <Text style={styles.itemSubtitle}>Curso: {curso?.nome}</Text>
+        </View>
+        <TouchableOpacity onPress={() => openModal(item)} style={styles.editButton}>
+          <Text style={styles.editText}>Editar</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity onPress={() => openModal(item)} style={styles.editButton}>
-        <Text style={styles.editText}>Editar</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -121,49 +122,48 @@ const CoursesScreen = () => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={courses}
-        keyExtractor={(item) => item.id.toString()}
+        data={turmas}
+        keyExtractor={item => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text>Nenhum curso cadastrado.</Text>}
+        ListEmptyComponent={<Text>Nenhuma turma cadastrada.</Text>}
       />
       <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>
-        <Text style={styles.addButtonText}>+ Novo Curso</Text>
+        <Text style={styles.addButtonText}>+ Nova Turma</Text>
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {editingCourse ? 'Editar Curso' : 'Novo Curso'}
+              {editing ? 'Editar Turma' : 'Nova Turma'}
             </Text>
             <TextInput
-              placeholder="Nome do Curso"
+              placeholder="Nome"
               placeholderTextColor="#999"
-              value={name}
-              onChangeText={setName}
+              value={nome}
+              onChangeText={setNome}
               style={styles.input}
             />
             <TextInput
-              placeholder="Abreviação do Curso"
+              placeholder="Divisão"
               placeholderTextColor="#999"
-              value={abreviacao}
-              onChangeText={setAbreviacao}
+              value={divisao}
+              onChangeText={setDivisao}
               style={styles.input}
+              maxLength={1}
             />
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={period}
-                onValueChange={setPeriod}
-                style={styles.picker}
-              >
-                {PERIODS.map((p) => (
-                  <Picker.Item key={p.value} label={p.label} value={p.value} />
-                ))}
-              </Picker>
-            </View>
+            <Picker
+              selectedValue={cursoCd}
+              onValueChange={setCursoCd}
+              style={styles.picker}
+            >
+              {cursos.map(c => (
+                <Picker.Item key={c.id} label={c.nome} value={c.id.toString()} />
+              ))}
+            </Picker>
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={saveCourse} style={styles.saveButton}>
+              <TouchableOpacity onPress={save} style={styles.saveButton}>
                 <Text style={styles.saveText}>Salvar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   textContainer: { flex: 1, marginRight: 10 },
   itemTitle: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
-  itemSubtitle: { fontSize: 14, color: '#666' },
+  itemSubtitle: { fontSize: 14, color: '#666', marginBottom: 2 },
   editButton: { padding: 8 },
   editText: { color: '#b20000', fontWeight: '500' },
   addButton: {
@@ -211,8 +211,7 @@ const styles = StyleSheet.create({
   modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 8, padding: 16 },
   modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
   input: { width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, padding: 10, marginBottom: 12 },
-  pickerWrapper: { width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginBottom: 12 },
-  picker: { width: '100%' },
+  picker: { marginBottom: 12 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end' },
   saveButton: { marginRight: 12 },
   saveText: { color: '#b20000', fontWeight: '500' },
@@ -220,4 +219,4 @@ const styles = StyleSheet.create({
   cancelText: { color: '#666' }
 });
 
-export default CoursesScreen;
+export default TurmasScreen;

@@ -10,89 +10,94 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 
-const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm/cursos';
-const PERIODS = [
-  { label: 'Integral (Manhã)', value: 'Mtec dia' },
-  { label: 'Integral (Noite)', value: 'Integral-Noite' },
-  { label: 'Modular (Noite)', value: 'Modular-Noite' }
-];
+const API_URL = 'http://hospedagem-hackathon7.infinityfreeapp.com/api/adm/professores';
 
-const CoursesScreen = () => {
-  const [courses, setCourses] = useState([]);
+const ProfessoresScreen = () => {
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingCourse, setEditingCourse] = useState(null);
+  const [editingTeacher, setEditingTeacher] = useState(null);
   const [name, setName] = useState('');
-  const [abreviacao, setAbreviacao] = useState('');
-  const [period, setPeriod] = useState(PERIODS[0].value);
+  const [apelido, setApelido] = useState('');
+  const [email, setEmail] = useState('');
 
   useEffect(() => {
-    fetchCourses();
+    fetchTeachers();
   }, []);
 
-  const fetchCourses = async () => {
+  const fetchTeachers = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/cursos.php`);
-      const json = await res.json();
-      console.log('Cursos carregados:', json.cursos);
-      setCourses(json.cursos || []);
+      const res = await fetch(`${API_URL}/professores.php`);
+      console.log('[fetchTeachers] status', res.status);
+      const text = await res.text();
+      console.log('[fetchTeachers] raw:', text);
+      const json = JSON.parse(text);
+      setTeachers(json.professores || []);
     } catch (e) {
-      console.error('Erro ao carregar cursos:', e);
-      Alert.alert('Erro', 'Não foi possível carregar cursos');
+      console.error('[fetchTeachers] error:', e);
+      Alert.alert('Erro', 'Não foi possível carregar professores');
     } finally {
       setLoading(false);
     }
   };
 
-  const openModal = (course = null) => {
-    if (course) {
-      setEditingCourse(course);
-      setName(course.nome);
-      setAbreviacao(course.abreviacao);
-      setPeriod(course.periodo);
+  const openModal = (teacher = null) => {
+    if (teacher) {
+      setEditingTeacher(teacher);
+      setName(teacher.nome);
+      setApelido(teacher.apelido);
+      setEmail(teacher.email);
     } else {
-      setEditingCourse(null);
+      setEditingTeacher(null);
       setName('');
-      setAbreviacao('');
-      setPeriod(PERIODS[0].value);
+      setApelido('');
+      setEmail('');
     }
     setModalVisible(true);
   };
 
-  const saveCourse = async () => {
-    if (!name.trim()) {
-      Alert.alert('Validação', 'Informe o nome do curso');
+  const saveTeacher = async () => {
+    if (!name.trim() || !apelido.trim() || !email.trim()) {
+      Alert.alert('Validação', 'Todos os campos são obrigatórios');
       return;
     }
-    if (!abreviacao.trim()) {
-      Alert.alert('Validação', 'Informe a abreviação');
-      return;
-    }
-    try {
-      const payload = { nome: name, abreviacao: abreviacao, periodo: period };
-      const url = editingCourse
-        ? `${API_URL}/curso_update.php`
-        : `${API_URL}/curso_create.php`;
-      if (editingCourse) payload.id = editingCourse.id;
 
+    const payload = { nome: name, apelido, email };
+    const url = editingTeacher
+      ? `${API_URL}/professores_update.php`
+      : `${API_URL}/professores_create.php`;
+    if (editingTeacher) payload.id = editingTeacher.id;
+
+    try {
+      console.log('[saveTeacher] POST', url, payload);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      console.log('Resposta saveCourse:', data);
+      console.log('[saveTeacher] status', res.status);
+      const text = await res.text();
+      console.log('[saveTeacher] raw:', text);
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        console.error('[saveTeacher] parse error:', err);
+        Alert.alert('Erro', 'Resposta inválida do servidor');
+        return;
+      }
+
       if (res.ok && data.success) {
-        fetchCourses();
+        fetchTeachers();
         setModalVisible(false);
       } else {
+        console.warn('[saveTeacher] fail:', data);
         Alert.alert('Erro', data.message || 'Falha ao salvar');
       }
     } catch (e) {
-      console.error('Erro de comunicação:', e);
+      console.error('[saveTeacher] network error:', e);
       Alert.alert('Erro', 'Falha na comunicação');
     }
   };
@@ -101,8 +106,8 @@ const CoursesScreen = () => {
     <View style={styles.item}>
       <View style={styles.textContainer}>
         <Text style={styles.itemTitle}>{item.nome}</Text>
-        <Text style={styles.itemSubtitle}>{item.abreviacao}</Text>
-        <Text style={styles.itemSubtitle}>{item.periodo}</Text>
+        <Text style={styles.itemSubtitle}>Apelido: {item.apelido}</Text>
+        <Text style={styles.itemSubtitle}>Email: {item.email}</Text>
       </View>
       <TouchableOpacity onPress={() => openModal(item)} style={styles.editButton}>
         <Text style={styles.editText}>Editar</Text>
@@ -121,49 +126,46 @@ const CoursesScreen = () => {
   return (
     <View style={styles.container}>
       <FlatList
-        data={courses}
+        data={teachers}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text>Nenhum curso cadastrado.</Text>}
+        ListEmptyComponent={<Text>Nenhum professor cadastrado.</Text>}
       />
       <TouchableOpacity style={styles.addButton} onPress={() => openModal()}>
-        <Text style={styles.addButtonText}>+ Novo Curso</Text>
+        <Text style={styles.addButtonText}>+ Novo Professor</Text>
       </TouchableOpacity>
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>
-              {editingCourse ? 'Editar Curso' : 'Novo Curso'}
+              {editingTeacher ? 'Editar Professor' : 'Novo Professor'}
             </Text>
             <TextInput
-              placeholder="Nome do Curso"
+              placeholder="Nome"
               placeholderTextColor="#999"
               value={name}
               onChangeText={setName}
               style={styles.input}
             />
             <TextInput
-              placeholder="Abreviação do Curso"
+              placeholder="Apelido"
               placeholderTextColor="#999"
-              value={abreviacao}
-              onChangeText={setAbreviacao}
+              value={apelido}
+              onChangeText={setApelido}
               style={styles.input}
             />
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={period}
-                onValueChange={setPeriod}
-                style={styles.picker}
-              >
-                {PERIODS.map((p) => (
-                  <Picker.Item key={p.value} label={p.label} value={p.value} />
-                ))}
-              </Picker>
-            </View>
+            <TextInput
+              placeholder="Email"
+              placeholderTextColor="#999"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              style={styles.input}
+            />
             <View style={styles.modalActions}>
-              <TouchableOpacity onPress={saveCourse} style={styles.saveButton}>
+              <TouchableOpacity onPress={saveTeacher} style={styles.saveButton}>
                 <Text style={styles.saveText}>Salvar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelButton}>
@@ -192,7 +194,7 @@ const styles = StyleSheet.create({
   },
   textContainer: { flex: 1, marginRight: 10 },
   itemTitle: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
-  itemSubtitle: { fontSize: 14, color: '#666' },
+  itemSubtitle: { fontSize: 14, color: '#666', marginBottom: 2 },
   editButton: { padding: 8 },
   editText: { color: '#b20000', fontWeight: '500' },
   addButton: {
@@ -211,8 +213,6 @@ const styles = StyleSheet.create({
   modalContent: { width: '90%', backgroundColor: '#fff', borderRadius: 8, padding: 16 },
   modalTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
   input: { width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, padding: 10, marginBottom: 12 },
-  pickerWrapper: { width: '100%', borderWidth: 1, borderColor: '#ccc', borderRadius: 4, marginBottom: 12 },
-  picker: { width: '100%' },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end' },
   saveButton: { marginRight: 12 },
   saveText: { color: '#b20000', fontWeight: '500' },
@@ -220,4 +220,4 @@ const styles = StyleSheet.create({
   cancelText: { color: '#666' }
 });
 
-export default CoursesScreen;
+export default ProfessoresScreen;
